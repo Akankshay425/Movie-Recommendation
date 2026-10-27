@@ -34,31 +34,19 @@ The system analyzes user–movie ratings to identify users with similar preferen
 5. Predicts ratings for movies the selected user has not rated.
 6. Recommends movies with the highest predicted ratings.
 
-## 🛠️ Technologies Used
+### 🛠️ Technologies Used
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- Streamlit
-- REST API
-- TMDB API for movie information and posters, where configured
+- **Python** — Core programming language
+- **Pandas & NumPy** — Data processing and numerical operations
+- **Scikit-learn** — Cosine Similarity and collaborative filtering
+- **SciPy** — Scientific computing
+- **Streamlit** — Interactive web application
+- **FastAPI** — Backend API
+- **Uvicorn** — ASGI server
+- **HTTPX** — HTTP requests
+- **Python-dotenv** — Environment variable management
 
-## 📂 Project Structure
-
-```text
-Movie-Recommendation/
-├── app.py
-├── collaborative_filtering.py
-├── movies.csv
-├── ratings.csv
-├── requirements.txt
-└── README.md
-```
-
-*Note: The structure above is illustrative. Keep only the filenames that actually exist in your repository.*
-
-## 💻 Run Locally
+## 📦 Installation and Setup
 
 ### 1. Clone the repository
 
@@ -66,7 +54,7 @@ Movie-Recommendation/
 git clone https://github.com/Akankshay425/Movie-Recommendation.git
 ```
 
-### 2. Open the project directory
+### 2. Navigate to the project folder
 
 ```bash
 cd Movie-Recommendation
@@ -83,6 +71,8 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
+
+**Note:** If the backend is maintained separately, make sure it is running and its API URL is configured correctly before launching the application.
 
 Make sure the required datasets, dependencies, and API configuration are available before running the application.
 

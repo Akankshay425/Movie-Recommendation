@@ -364,6 +364,50 @@ if st.session_state.view == "home":
 # ==========================================================
 # VIEW: DETAILS
 # ==========================================================
+
+# ==========================================================
+# COLLABORATIVE FILTERING
+# ==========================================================
+    st.divider()
+    st.markdown("## 🤝 Collaborative Filtering")
+    st.caption(
+        "Discover movies based on ratings from users with similar tastes."
+    )
+
+    try:
+        _, _, user_movie_matrix = load_movie_data()
+
+        user_ids = sorted(user_movie_matrix.index.tolist())
+
+        selected_user = st.selectbox(
+            "Select a MovieLens user",
+            user_ids,
+            key="cf_user_select"
+        )
+
+        if st.button("✨ Get Recommendations", key="cf_button"):
+            with st.spinner("Finding movies you may like..."):
+                recommendations = recommend_movies(
+                    int(selected_user),
+                    top_n=10
+                )
+
+            if not recommendations.empty:
+                st.markdown(
+                    f"### 🎯 Recommended movies for User {selected_user}"
+                )
+
+                for _, movie in recommendations.iterrows():
+                    st.write(
+                        f"🎬 **{movie['title']}** — "
+                        f"Predicted rating: "
+                        f"{movie['predicted_rating']:.2f}/5"
+                    )
+            else:
+                st.info("No recommendations found. Try another user.")
+
+    except Exception as e:
+        st.error(f"Collaborative Filtering error: {e}")
 elif st.session_state.view == "details":
     tmdb_id = st.session_state.selected_tmdb_id
     if not tmdb_id:

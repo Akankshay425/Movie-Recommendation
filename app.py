@@ -1,6 +1,6 @@
 import requests
 import streamlit as st
-
+from collaborative_filtering import recommend_movies, load_movie_data
 # =============================
 # CONFIG
 # =============================
@@ -315,59 +315,81 @@ if st.session_state.view == "home":
 
         st.stop()
 
+# ==========================================================
     # HOME FEED MODE
-    st.markdown(f"### 🏠 Home — {home_category.replace('_',' ').title()}")
+    # ==========================================================
+    st.markdown(f"### 🏠 Home — {home_category.replace('_', ' ').title()}")
 
     home_cards, err = api_get_json(
         "/home", params={"category": home_category, "limit": 24}
     )
+
     if err or not home_cards:
         st.error(f"Home feed failed: {err or 'Unknown error'}")
         st.stop()
 
     poster_grid(home_cards, cols=grid_cols, key_prefix="home_feed")
 
-    # Personalized recommendations based on the user's favourite movies.
+    # ==========================================================
+    # PERSONALIZED RECOMMENDATIONS
+    # ==========================================================
     if st.session_state.get("favorite_movies"):
         st.divider()
         st.markdown("## 🎯 Recommended For You")
         st.caption(
-            "Based on your favourite movies. Add more favourites in the sidebar to refine these suggestions."
+            "Based on your favourite movies. Add more favourites "
+            "in the sidebar to refine these suggestions."
         )
+
         personalized_cards = []
-        seen_ids = set(m["tmdb_id"] for m in st.session_state.favorite_movies)
+        seen_ids = set(
+            m["tmdb_id"] for m in st.session_state.favorite_movies
+        )
+
         for favorite in st.session_state.favorite_movies[:3]:
             bundle, rec_err = api_get_json(
                 "/movie/search",
-                params={"query": favorite["title"], "tfidf_top_n": 8, "genre_limit": 1},
+                params={
+                    "query": favorite["title"],
+                    "tfidf_top_n": 8,
+                    "genre_limit": 1,
+                },
             )
+
             if not rec_err and bundle:
                 for item in bundle.get("tfidf_recommendations", []):
                     movie = item.get("tmdb") or {}
                     movie_id = movie.get("tmdb_id")
+
                     if movie_id and movie_id not in seen_ids:
                         seen_ids.add(movie_id)
                         personalized_cards.append(
                             {
                                 "tmdb_id": movie_id,
-                                "title": movie.get("title") or item.get("title") or "Untitled",
+                                "title": (
+                                    movie.get("title")
+                                    or item.get("title")
+                                    or "Untitled"
+                                ),
                                 "poster_url": movie.get("poster_url"),
                             }
                         )
+
         if personalized_cards:
-            poster_grid(personalized_cards[:18], cols=grid_cols, key_prefix="personalized")
+            poster_grid(
+                personalized_cards[:18],
+                cols=grid_cols,
+                key_prefix="personalized",
+            )
         else:
             st.info(
-                "Recommendations are not available for these favourites yet. Try adding a different movie."
+                "Recommendations are not available for these favourites yet. "
+                "Try adding a different movie."
             )
 
-# ==========================================================
-# VIEW: DETAILS
-# ==========================================================
-
-# ==========================================================
-# COLLABORATIVE FILTERING
-# ==========================================================
+    # ==========================================================
+    # COLLABORATIVE FILTERING
+    # ==========================================================
     st.divider()
     st.markdown("## 🤝 Collaborative Filtering")
     st.caption(
@@ -376,38 +398,48 @@ if st.session_state.view == "home":
 
     try:
         _, _, user_movie_matrix = load_movie_data()
-
         user_ids = sorted(user_movie_matrix.index.tolist())
 
-        selected_user = st.selectbox(
-            "Select a MovieLens user",
-            user_ids,
-            key="cf_user_select"
-        )
+        if not user_ids:
+            st.info("No users found in the ratings dataset.")
+        else:
+            selected_user = st.selectbox(
+                "Select a MovieLens user",
+                user_ids,
+                key="cf_user_select",
+            )
 
-        if st.button("✨ Get Recommendations", key="cf_button"):
-            with st.spinner("Finding movies you may like..."):
-                recommendations = recommend_movies(
-                    int(selected_user),
-                    top_n=10
-                )
-
-            if not recommendations.empty:
-                st.markdown(
-                    f"### 🎯 Recommended movies for User {selected_user}"
-                )
-
-                for _, movie in recommendations.iterrows():
-                    st.write(
-                        f"🎬 **{movie['title']}** — "
-                        f"Predicted rating: "
-                        f"{movie['predicted_rating']:.2f}/5"
+            if st.button("✨ Get Recommendations", key="cf_button"):
+                with st.spinner("Finding movies you may like..."):
+                    recommendations = recommend_movies(
+                        int(selected_user),
+                        top_n=10,
                     )
-            else:
-                st.info("No recommendations found. Try another user.")
+
+                if not recommendations.empty:
+                    st.markdown(
+                        f"### 🎯 Recommended movies for User {selected_user}"
+                    )
+
+                    for _, movie in recommendations.iterrows():
+                        st.write(
+                            f"🎬 **{movie['title']}** — "
+                            f"Predicted rating: "
+                            f"{movie['predicted_rating']:.2f}/5"
+                        )
+                else:
+                    st.info(
+                        "No recommendations found. Try another user."
+                    )
 
     except Exception as e:
         st.error(f"Collaborative Filtering error: {e}")
+
+
+# ==========================================================
+# VIEW: DETAILS
+# ==========================================================
+
 elif st.session_state.view == "details":
     tmdb_id = st.session_state.selected_tmdb_id
     if not tmdb_id:

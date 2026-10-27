@@ -82,6 +82,6 @@ The objective of this project is to demonstrate how machine learning techniques 
 
 ## 👩‍💻 Author
 
-**Akanksha Yadav**
+**Yadav Akansha Rajesh**
 
 [GitHub Profile](https://github.com/Akankshay425)

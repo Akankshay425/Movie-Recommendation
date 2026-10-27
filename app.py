@@ -215,6 +215,55 @@ with st.sidebar:
     )
     grid_cols = st.slider("Grid columns", 4, 8, 6)
 
+    # Personalized recommendations: store favorite movie titles in this browser session
+    if "favorite_movies" not in st.session_state:
+        st.session_state.favorite_movies = []
+
+    st.markdown("---")
+    st.markdown("### ❤️ Personalize Your Feed")
+    favorite_query = st.text_input(
+        "Add a favourite movie",
+        placeholder="e.g. Interstellar",
+        key="favorite_query",
+    )
+    favorite_options = []
+    if len(favorite_query.strip()) >= 2:
+        fav_data, fav_err = api_get_json(
+            "/tmdb/search", params={"query": favorite_query.strip()}
+        )
+        if not fav_err and fav_data:
+            favorite_options, _ = parse_tmdb_search_to_cards(
+                fav_data, favorite_query.strip(), limit=10
+            )
+
+    if favorite_options:
+        favorite_labels = [item[0] for item in favorite_options]
+        chosen_favorite = st.selectbox(
+            "Choose your movie", favorite_labels, key="favorite_choice"
+        )
+        if st.button("➕ Add to favourites", use_container_width=True):
+            chosen_id = dict(favorite_options)[chosen_favorite]
+            if not any(m["tmdb_id"] == chosen_id for m in st.session_state.favorite_movies):
+                st.session_state.favorite_movies.append(
+                    {"tmdb_id": chosen_id, "title": chosen_favorite.rsplit(" (", 1)[0]}
+                )
+            st.rerun()
+
+    if st.session_state.favorite_movies:
+        st.caption("Your favourites:")
+        for fav in st.session_state.favorite_movies:
+            st.write("❤️ " + fav["title"])
+        remove_title = st.selectbox(
+            "Remove a favourite (optional)",
+            [m["title"] for m in st.session_state.favorite_movies],
+            key="remove_favorite_choice",
+        )
+        if st.button("➖ Remove selected", use_container_width=True):
+            st.session_state.favorite_movies = [
+                m for m in st.session_state.favorite_movies if m["title"] != remove_title
+            ]
+            st.rerun()
+
 # =============================
 # HEADER
 # =============================
@@ -277,6 +326,40 @@ if st.session_state.view == "home":
         st.stop()
 
     poster_grid(home_cards, cols=grid_cols, key_prefix="home_feed")
+
+    # Personalized recommendations based on the user's favourite movies.
+    if st.session_state.get("favorite_movies"):
+        st.divider()
+        st.markdown("## 🎯 Recommended For You")
+        st.caption(
+            "Based on your favourite movies. Add more favourites in the sidebar to refine these suggestions."
+        )
+        personalized_cards = []
+        seen_ids = set(m["tmdb_id"] for m in st.session_state.favorite_movies)
+        for favorite in st.session_state.favorite_movies[:3]:
+            bundle, rec_err = api_get_json(
+                "/movie/search",
+                params={"query": favorite["title"], "tfidf_top_n": 8, "genre_limit": 1},
+            )
+            if not rec_err and bundle:
+                for item in bundle.get("tfidf_recommendations", []):
+                    movie = item.get("tmdb") or {}
+                    movie_id = movie.get("tmdb_id")
+                    if movie_id and movie_id not in seen_ids:
+                        seen_ids.add(movie_id)
+                        personalized_cards.append(
+                            {
+                                "tmdb_id": movie_id,
+                                "title": movie.get("title") or item.get("title") or "Untitled",
+                                "poster_url": movie.get("poster_url"),
+                            }
+                        )
+        if personalized_cards:
+            poster_grid(personalized_cards[:18], cols=grid_cols, key_prefix="personalized")
+        else:
+            st.info(
+                "Recommendations are not available for these favourites yet. Try adding a different movie."
+            )
 
 # ==========================================================
 # VIEW: DETAILS
